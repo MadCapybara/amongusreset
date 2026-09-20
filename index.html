@@ -14,7 +14,7 @@
 <p>This remembers the file you select using the browser's <strong>File System Access API</strong>.</p>
 <p>After the first selection, use <strong>Fix Line 26</strong> to modify the same file without selecting it again.</p>
 <button id="select">Select player.amogus</button>
-<button id="edit" disabled>Fix Line 26</button>
+<button id="edit" disabled>Reset Leave Data</button>
 <button id="forget" disabled>Forget Saved File</button>
 <div id="status">No file selected.</div>
 <div class="warning">The browser remembers permission through a local file handle. This is not a cookie and the file itself never gets uploaded.</div>
@@ -62,10 +62,10 @@ async function loadHandle(){
       const permission=await h.queryPermission({mode:'readwrite'});
       if(permission==='granted'){
         handle=h;editBtn.disabled=false;forgetBtn.disabled=false;
-        setStatus('Saved file: '+h.name+'\\nReady to fix line 26.');
+        setStatus('Saved file: '+h.name+'Ready to fix line 26.');
       }else{
         handle=h;editBtn.disabled=false;forgetBtn.disabled=false;
-        setStatus('Saved file: '+h.name+'\\nClick Fix Line 26 to re-authorize access if needed.');
+        setStatus('Saved file: '+h.name+'Click Fix Line 26 to re-authorize access if needed.');
       }
     }
   }catch(e){}
@@ -81,7 +81,7 @@ selectBtn.onclick=async()=>{
     const permission=await h.requestPermission({mode:'readwrite'});
     if(permission!=='granted') throw new Error('Write permission was not granted.');
     await saveHandle(h);
-    setStatus('Saved file: '+h.name+'\\nReady to fix line 26.');
+    setStatus('Saved file: '+h.name+'Ready to fix line 26.');
   }catch(e){
     if(e.name!=='AbortError') setStatus('Error: '+e.message);
   }
@@ -96,8 +96,8 @@ editBtn.onclick=async()=>{
 
     const file=await handle.getFile();
     let text=await file.text();
-    const newline=text.includes('\r\n')?'\r\n':'\n';
-    const lines=text.split(/\r\n|\n/);
+    const newline=text.includes('\r')?'\r':'';
+    const lines=text.split(/\r|/);
     if(lines.length<26) throw new Error('Line 26 does not exist.');
     const oldLine=lines[25];
     lines[25]=TARGET;
@@ -105,7 +105,7 @@ editBtn.onclick=async()=>{
     await writable.write(lines.join(newline));
     await writable.close();
     await saveHandle(handle);
-    setStatus('Done! Line 26 was replaced.\\nOld:\\n'+oldLine+'\\nNew:\\n'+TARGET);
+    setStatus('Done! Line 26 was replaced.Old:'+oldLine+'New:'+TARGET, make sure to restart among us!);
   }catch(e){setStatus('Error: '+e.message);}
 };
 
