@@ -105,7 +105,7 @@ editBtn.onclick=async()=>{
     await writable.write(lines.join(newline));
     await writable.close();
     await saveHandle(handle);
-    setStatus('Done! Line 26 was replaced.\\n\\nOld:\\n'+oldLine+'\\n\\nNew:\\n'+TARGET);
+    setStatus('Done! Line 26 was replaced.\\nOld:\\n'+oldLine+'\\nNew:\\n'+TARGET);
   }catch(e){setStatus('Error: '+e.message);}
 };
 
