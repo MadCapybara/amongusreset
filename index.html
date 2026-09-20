@@ -4,23 +4,90 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>among us leave cheater</title>
+<title>Among Us Player File Editor</title>
+
 <style>
 *{box-sizing:border-box}
-body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0f1117;color:#f2f4f8;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-.card{width:min(620px,calc(100% - 32px));padding:32px;border:1px solid #2b3040;border-radius:18px;background:#171a22;box-shadow:0 18px 60px #0008}
-h1{margin:0 0 10px;font-size:28px}
-p{color:#aeb5c2;line-height:1.5}
-code{padding:2px 6px;border-radius:6px;background:#0d0f14;color:#e7eaf0}
-button{width:100%;padding:13px 16px;margin-top:10px;border:0;border-radius:10px;background:#5865f2;color:white;font-size:16px;font-weight:700;cursor:pointer}
-button:hover{background:#4752c4}
-button:disabled{opacity:.5;cursor:not-allowed}
-#status{margin-top:18px;padding:13px;border-radius:10px;background:#0d0f14;color:#cbd2df;white-space:pre-wrap}
-.warning{margin-top:16px;font-size:13px;color:#8f98a8}
+
+body{
+  margin:0;
+  min-height:100vh;
+  display:grid;
+  place-items:center;
+  background:#0f1117;
+  color:#f2f4f8;
+  font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif
+}
+
+.card{
+  width:min(620px,calc(100% - 32px));
+  padding:32px;
+  border:1px solid #2b3040;
+  border-radius:18px;
+  background:#171a22;
+  box-shadow:0 18px 60px #0008
+}
+
+h1{
+  margin:0 0 10px;
+  font-size:28px
+}
+
+p{
+  color:#aeb5c2;
+  line-height:1.5
+}
+
+button{
+  width:100%;
+  padding:13px 16px;
+  margin-top:10px;
+  border:0;
+  border-radius:10px;
+  background:#5865f2;
+  color:white;
+  font-size:16px;
+  font-weight:700;
+  cursor:pointer
+}
+
+button:hover{
+  background:#4752c4
+}
+
+button:disabled{
+  opacity:.5;
+  cursor:not-allowed
+}
+
+.secondary{
+  background:#2b3040
+}
+
+.secondary:hover{
+  background:#383e50
+}
+
+#status{
+  margin-top:18px;
+  padding:13px;
+  border-radius:10px;
+  background:#0d0f14;
+  color:#cbd2df;
+  white-space:pre-wrap
+}
+
+.warning{
+  margin-top:16px;
+  font-size:13px;
+  color:#8f98a8
+}
 </style>
+
 </head>
 
 <body>
+
 <main class="card">
 
 <h1>Among Us leave penalty remover</h1>
@@ -31,122 +98,249 @@ This remembers the file you select using the browser's
 </p>
 
 <p>
-After the first selection, use <strong>Reset Leave Penalty</strong>
-to modify the same file without selecting it again.
-Ensure you restart Among Us after doing it.
+The file picker can also remember your <strong>Among Us folder</strong>,
+so it can open there automatically next time.
 </p>
 
-<button id="select">Select player.amogus</button> <button id="edit" disabled>Reset Leave Penalty!</button> <button id="forget" disabled>Forget Saved File</button>
+<button id="folder">Choose Among Us Folder</button>
+<button id="select">Select player.amogus</button>
+<button id="edit" disabled>Reset Leave Penalty!</button>
+<button id="forget" disabled>Forget Saved File</button>
 
 <div id="status">No file selected.</div>
 
 <div class="warning">
-The browser remembers permission through a local file handle.
-This is not a cookie and the file itself never gets uploaded.
+Your file is edited locally in your browser. It is never uploaded.
+The browser stores the selected file and folder handles in IndexedDB.
 </div>
 
 </main>
 
 <script>
+
 const TARGET='  "ban": "",';
 
+const DB_NAME='AmongUsPlayerEditor';
+const DB_VERSION=2;
+const STORE='settings';
+
 const selectBtn=document.getElementById('select');
+const folderBtn=document.getElementById('folder');
 const editBtn=document.getElementById('edit');
 const forgetBtn=document.getElementById('forget');
 const status=document.getElementById('status');
 
 let handle=null;
+let folderHandle=null;
+
+/* =========================
+   STATUS
+========================= */
 
 function setStatus(s){
   status.textContent=s;
 }
 
-async function saveHandle(h){
-  handle=h;
+/* =========================
+   DATABASE
+========================= */
 
-  try{
-    const dbReq=indexedDB.open('AmongUsPlayerEditor',1);
+function openDB(){
+  return new Promise((resolve,reject)=>{
+    const req=indexedDB.open(DB_NAME,DB_VERSION);
 
-    dbReq.onupgradeneeded=()=>{
-      dbReq.result.createObjectStore('settings');
+    req.onupgradeneeded=()=>{
+      const db=req.result;
+
+      if(!db.objectStoreNames.contains(STORE)){
+        db.createObjectStore(STORE);
+      }
     };
 
+    req.onsuccess=()=>resolve(req.result);
+    req.onerror=()=>reject(req.error);
+  });
+}
+
+async function saveValue(key,value){
+  try{
+    const db=await openDB();
+
     await new Promise((resolve,reject)=>{
-      dbReq.onsuccess=resolve;
-      dbReq.onerror=reject;
-    });
+      const tx=db.transaction(STORE,'readwrite');
 
-    const db=dbReq.result;
-
-    await new Promise((resolve,reject)=>{
-      const tx=db.transaction('settings','readwrite');
-
-      tx.objectStore('settings').put(h,'playerHandle');
+      tx.objectStore(STORE).put(value,key);
 
       tx.oncomplete=resolve;
-      tx.onerror=reject;
+      tx.onerror=()=>reject(tx.error);
     });
 
     db.close();
+
   }catch(e){}
+}
+
+async function getValue(key){
+  try{
+    const db=await openDB();
+
+    const value=await new Promise((resolve,reject)=>{
+      const tx=db.transaction(STORE,'readonly');
+
+      const req=tx.objectStore(STORE).get(key);
+
+      req.onsuccess=()=>resolve(req.result);
+      req.onerror=()=>reject(req.error);
+    });
+
+    db.close();
+
+    return value;
+
+  }catch(e){
+    return null;
+  }
+}
+
+async function deleteValue(key){
+  try{
+    const db=await openDB();
+
+    await new Promise((resolve,reject)=>{
+      const tx=db.transaction(STORE,'readwrite');
+
+      tx.objectStore(STORE).delete(key);
+
+      tx.oncomplete=resolve;
+      tx.onerror=()=>reject(tx.error);
+    });
+
+    db.close();
+
+  }catch(e){}
+}
+
+/* =========================
+   SAVE FILE
+========================= */
+
+async function saveHandle(h){
+
+  handle=h;
+
+  await saveValue('playerHandle',h);
 
   editBtn.disabled=false;
   forgetBtn.disabled=false;
 }
 
+/* =========================
+   SAVE FOLDER
+========================= */
+
+async function saveFolder(h){
+
+  folderHandle=h;
+
+  await saveValue('folderHandle',h);
+
+  setStatus(
+    'Among Us folder saved: '+h.name+
+    '\n\nThe file picker will try to open here next time.'
+  );
+}
+
+/* =========================
+   LOAD SAVED DATA
+========================= */
+
 async function loadHandle(){
+
   try{
-    const req=indexedDB.open('AmongUsPlayerEditor',1);
 
-    req.onupgradeneeded=()=>{
-      req.result.createObjectStore('settings');
-    };
+    const savedFile=await getValue('playerHandle');
+    const savedFolder=await getValue('folderHandle');
 
-    const db=await new Promise((resolve,reject)=>{
-      req.onsuccess=()=>resolve(req.result);
-      req.onerror=reject;
-    });
+    if(savedFolder){
+      folderHandle=savedFolder;
+    }
 
-    const h=await new Promise((resolve,reject)=>{
-      const tx=db.transaction('settings','readonly');
-      const r=tx.objectStore('settings').get('playerHandle');
+    if(savedFile){
 
-      r.onsuccess=()=>resolve(r.result);
-      r.onerror=reject;
-    });
+      handle=savedFile;
 
-    db.close();
+      let permission='prompt';
 
-    if(h){
-      const permission=await h.queryPermission({mode:'readwrite'});
+      try{
+        permission=await handle.queryPermission({
+          mode:'readwrite'
+        });
+      }catch(e){}
+
+      editBtn.disabled=false;
+      forgetBtn.disabled=false;
 
       if(permission==='granted'){
-        handle=h;
-        editBtn.disabled=false;
-        forgetBtn.disabled=false;
 
         setStatus(
-          'Saved file: '+h.name+
+          'Saved file: '+handle.name+
           '\nReady to fix line 26.'
         );
+
       }else{
-        handle=h;
-        editBtn.disabled=false;
-        forgetBtn.disabled=false;
 
         setStatus(
-          'Saved file: '+h.name+
+          'Saved file: '+handle.name+
           '\nClick Reset Leave Penalty to re-authorize access if needed.'
         );
       }
+
+    }else if(folderHandle){
+
+      setStatus(
+        'Among Us folder saved: '+folderHandle.name+
+        '\nReady to select player.amogus.'
+      );
     }
+
   }catch(e){}
 }
 
-selectBtn.onclick=async()=>{
+/* =========================
+   CHOOSE AMONG US FOLDER
+========================= */
+
+folderBtn.onclick=async()=>{
+
   try{
-    const [h]=await window.showOpenFilePicker({
+
+    const h=await window.showDirectoryPicker({
+      mode:'readwrite'
+    });
+
+    await saveFolder(h);
+
+    selectBtn.disabled=false;
+
+  }catch(e){
+
+    if(e.name!=='AbortError'){
+      setStatus('Error: '+e.message);
+    }
+  }
+};
+
+/* =========================
+   SELECT PLAYER.AMOGUS
+========================= */
+
+selectBtn.onclick=async()=>{
+
+  try{
+
+    const options={
       multiple:false,
+
       types:[
         {
           description:'Among Us player file',
@@ -155,10 +349,45 @@ selectBtn.onclick=async()=>{
           }
         }
       ]
-    });
+    };
+
+    /*
+     * If an Among Us folder has been saved,
+     * tell the browser to open the picker there.
+     */
+    if(folderHandle){
+
+      try{
+
+        const permission=await folderHandle.queryPermission({
+          mode:'read'
+        });
+
+        if(permission==='granted'){
+
+          options.startIn=folderHandle;
+
+        }else{
+
+          const newPermission=await folderHandle.requestPermission({
+            mode:'read'
+          });
+
+          if(newPermission==='granted'){
+            options.startIn=folderHandle;
+          }
+        }
+
+      }catch(e){}
+    }
+
+    const [h]=await window.showOpenFilePicker(options);
 
     if(h.name.toLowerCase()!=='player.amogus'){
-      throw new Error('Please select player.amogus.');
+
+      throw new Error(
+        'Please select player.amogus.'
+      );
     }
 
     const permission=await h.requestPermission({
@@ -166,7 +395,10 @@ selectBtn.onclick=async()=>{
     });
 
     if(permission!=='granted'){
-      throw new Error('Write permission was not granted.');
+
+      throw new Error(
+        'Write permission was not granted.'
+      );
     }
 
     await saveHandle(h);
@@ -177,16 +409,29 @@ selectBtn.onclick=async()=>{
     );
 
   }catch(e){
+
     if(e.name!=='AbortError'){
-      setStatus('Error: '+e.message);
+
+      setStatus(
+        'Error: '+e.message
+      );
     }
   }
 };
 
+/* =========================
+   EDIT FILE
+========================= */
+
 editBtn.onclick=async()=>{
+
   try{
+
     if(!handle){
-      throw new Error('Select the file first.');
+
+      throw new Error(
+        'Select the file first.'
+      );
     }
 
     let permission=await handle.queryPermission({
@@ -194,23 +439,34 @@ editBtn.onclick=async()=>{
     });
 
     if(permission!=='granted'){
+
       permission=await handle.requestPermission({
         mode:'readwrite'
       });
     }
 
     if(permission!=='granted'){
-      throw new Error('Write permission was not granted.');
+
+      throw new Error(
+        'Write permission was not granted.'
+      );
     }
 
     const file=await handle.getFile();
-    let text=await file.text();
 
-    const newline=text.includes('\r\n')?'\r\n':'\n';
+    const text=await file.text();
+
+    const newline=text.includes('\r\n')
+      ? '\r\n'
+      : '\n';
+
     const lines=text.split(/\r\n|\n/);
 
     if(lines.length<26){
-      throw new Error('Line 26 does not exist.');
+
+      throw new Error(
+        'Line 26 does not exist.'
+      );
     }
 
     const oldLine=lines[25];
@@ -219,7 +475,10 @@ editBtn.onclick=async()=>{
 
     const writable=await handle.createWritable();
 
-    await writable.write(lines.join(newline));
+    await writable.write(
+      lines.join(newline)
+    );
+
     await writable.close();
 
     await saveHandle(handle);
@@ -231,49 +490,55 @@ editBtn.onclick=async()=>{
     );
 
   }catch(e){
-    setStatus('Error: '+e.message);
+
+    setStatus(
+      'Error: '+e.message
+    );
   }
 };
 
+/* =========================
+   FORGET EVERYTHING
+========================= */
+
 forgetBtn.onclick=async()=>{
-  try{
-    const req=indexedDB.open('AmongUsPlayerEditor',1);
 
-    req.onupgradeneeded=()=>{
-      req.result.createObjectStore('settings');
-    };
-
-    const db=await new Promise((resolve,reject)=>{
-      req.onsuccess=()=>resolve(req.result);
-      req.onerror=reject;
-    });
-
-    await new Promise((resolve,reject)=>{
-      const tx=db.transaction('settings','readwrite');
-
-      tx.objectStore('settings').delete('playerHandle');
-
-      tx.oncomplete=resolve;
-      tx.onerror=reject;
-    });
-
-    db.close();
-
-  }catch(e){}
+  await deleteValue('playerHandle');
+  await deleteValue('folderHandle');
 
   handle=null;
+  folderHandle=null;
+
   editBtn.disabled=true;
   forgetBtn.disabled=true;
 
-  setStatus('Saved file forgotten. Select it again.');
+  setStatus(
+    'Saved file and folder forgotten.'+
+    '\nSelect the file again.'
+  );
 };
 
-if(!window.showOpenFilePicker){
-  setStatus('Use a current Chrome or Edge browser.');
+/* =========================
+   BROWSER CHECK
+========================= */
+
+if(
+  !window.showOpenFilePicker ||
+  !window.showDirectoryPicker
+){
+
+  setStatus(
+    'Use a current Chrome or Edge browser.'
+  );
+
   selectBtn.disabled=true;
+  folderBtn.disabled=true;
+
 }else{
+
   loadHandle();
 }
+
 </script>
 
 </body>
