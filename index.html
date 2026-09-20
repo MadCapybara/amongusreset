@@ -106,6 +106,7 @@ so it can open there automatically next time.
 <button id="select">Select player.amogus</button>
 <button id="edit" disabled>Reset Leave Penalty!</button>
 <button id="forget" disabled>Forget Saved File</button>
+<button id="open">Open Among Us</button>
 
 <div id="status">No file selected.</div>
 
@@ -538,6 +539,10 @@ if(
 
   loadHandle();
 }
+
+document.getElementById('open').onclick=()=>{
+  window.location.href='steam://rungameid/945360';
+};
 
 </script>
 
